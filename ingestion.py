@@ -58,8 +58,11 @@ if __name__ == '__main__':
     
     # Verifica se o arquivo JSON existe antes de continuar
     if not os.path.exists(JSON_PATH):
-        logging.error(f"Arquivo '{JSON_PATH}' não encontrado. Execute o script 'parse_docs_to_json.py' primeiro.")
-        exit() # Encerra o script se o arquivo não existir
+        msg = (
+            f"Arquivo '{JSON_PATH}' não encontrado. Execute o script 'parse_docs_to_json.py' primeiro."
+        )
+        logging.error(msg)
+        raise FileNotFoundError(msg)
 
     # 2. Carrega os dados extraídos do arquivo JSON
     logging.info(f"Carregando documentos pré-processados de '{JSON_PATH}'...")
