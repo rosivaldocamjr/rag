@@ -85,7 +85,11 @@ def create_advanced_retriever(
     )
 
     # --- 3. Prepara os retrievers base ---
-    all_chunks = list(vector_store.docstore._dict.values())
+    # Coleta os documentos sem acessar atributos privados do docstore
+    all_chunks = [
+        vector_store.docstore.search(doc_id)
+        for doc_id in vector_store.index_to_docstore_id.values()
+    ]
     if not all_chunks:
         raise ValueError(
             "Nenhum documento encontrado no docstore do FAISS. O índice pode estar vazio."
@@ -107,6 +111,7 @@ def create_advanced_retriever(
             "Biblioteca de re-ranking indisponível; retornando retriever híbrido sem re-ranking."
         )
         return ensemble_retriever
+
 
     try:
         reranker_model_name = retriever_config.get(
