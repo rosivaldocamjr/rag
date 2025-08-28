@@ -72,7 +72,21 @@ def search_in_documents(retriever):
     return _search_in_documents
 
 
-def create_rag_agent(retriever):
+def create_rag_agent(retriever=None):
+
+    if retriever is None:
+        try:
+            retriever = create_advanced_retriever(
+                vector_store_path=BEST_INDEX_PATH,
+                embedding_model_name=BEST_EMBEDDING_MODEL,
+                k_value=config['agent']['retriever_k'],
+                retriever_config=config['retriever_models'],
+            )
+        except Exception as retr_err:
+            logging.error(
+                "Falha ao criar o retriever para o agente: %s", retr_err
+            )
+            retriever = None
 
     tools = [search_in_documents(retriever)]
     
@@ -117,20 +131,7 @@ if __name__ == '__main__':
 
     setup_logging()
 
-    try:
-        retriever = create_advanced_retriever(
-            vector_store_path=BEST_INDEX_PATH,
-            embedding_model_name=BEST_EMBEDDING_MODEL,
-            k_value=config['agent']['retriever_k'],
-            retriever_config=config['retriever_models'],
-        )
-    except Exception as retr_err:
-        logging.error(
-            "Falha ao criar o retriever para o agente: %s", retr_err
-        )
-        retriever = None
-
-    rag_agent = create_rag_agent(retriever)
+    rag_agent = create_rag_agent()
     logging.info("Agente RAG iniciado. Faça suas perguntas. Pressione Ctrl+C para sair.")
 
     try:
