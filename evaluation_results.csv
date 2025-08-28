@@ -1,0 +1,2 @@
+strategy_id,chunk_size,embedding_model,accuracy
+7,1000,local_models/bge-large-en-v1.5,70.00%

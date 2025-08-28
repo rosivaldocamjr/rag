@@ -1,0 +1,22 @@
+# Ambiente virtual
+venv/
+.venv/
+
+# Cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Arquivos de ambiente (segredos)
+.env
+.env.*
+
+# Dados locais e modelos
+local_models/
+vector_stores/
+
+# Arquivos de saída / temporários
+
+# VS Code configs
+.vscode/

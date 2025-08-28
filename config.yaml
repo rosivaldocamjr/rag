@@ -1,0 +1,52 @@
+# Caminhos dos arquivos
+data_path: "data/"
+test_set_path: "test_set.csv"
+vector_store_path_template: "vector_stores/faiss_index_strategy_{id}"
+results_path: "evaluation_results.csv"
+
+# Estratégias de Ingestão para testar
+ingestion_strategies:
+  #- id: 1
+  #  chunk_size: 1000
+  #  chunk_overlap: 200
+  #  embedding_model: "all-MiniLM-L6-v2"
+  #- id: 2
+  #  chunk_size: 2000
+  #  chunk_overlap: 400
+  #  embedding_model: "all-mpnet-base-v2"
+  #- id: 3
+  #  chunk_size: 750   # <-- Chunk menor e mais focado
+  #  chunk_overlap: 150
+  #  embedding_model: "all-mpnet-base-v2"
+  #- id: 4
+  #  chunk_size: 500   # <-- Chunk ainda menor, ideal para fatos específicos
+  #  chunk_overlap: 100
+  #  embedding_model: "all-mpnet-base-v2"
+  #- id: 5
+  #  chunk_size: 750
+  #  chunk_overlap: 150
+  #  embedding_model: "local_models/bge-large-en-v1.5"
+  #- id: 6
+  #  chunk_method: "semantic"  # Identificador para o novo método
+  #  embedding_model: "local_models/bge-large-en-v1.5"
+  - id: 7 # <-- NOVA ESTRATÉGIA ROBUSTA
+    chunk_method: "recursive"
+    chunk_size: 1000
+    chunk_overlap: 200
+    embedding_model: "local_models/bge-large-en-v1.5"
+
+# Configurações do Avaliador (LLM as a Judge)
+evaluator:
+  llm_judge: "gpt-4o-mini" # Modelo mais barato para a avaliação em massa
+  retriever_k: 7 # Número de chunks a recuperar para o julgamento
+
+# Configurações do Agente Final
+agent:
+  strategy_to_use: 7 # Fixando a estratégia 2, que foi a vencedora nos seus testes.
+  agent_llm: "gpt-4o-mini" # Modelo de alta qualidade para a resposta final
+  retriever_k: 5
+
+# Modelos e Parâmetros do Retriever
+retriever_models:
+  default_embedding_fallback: "all-MiniLM-L6-v2"
+  reranker_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
