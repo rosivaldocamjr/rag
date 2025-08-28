@@ -14,11 +14,13 @@ load_dotenv()
 
 
 try:
-    del os.environ['LANGCHAIN_TRACING_V2']
-    del os.environ['LANGCHAIN_API_KEY']
+    os.environ.pop('LANGCHAIN_TRACING_V2', None)
+    os.environ.pop('LANGCHAIN_API_KEY', None)
     print("--- Logging para LangSmith DESATIVADO via código. ---")
 except KeyError:
     pass
+
+setup_logging()
 
 
 def llm_as_judge(question: str, retrieved_chunks: list, judge_model_name: str) -> dict:
@@ -58,13 +60,13 @@ def llm_as_judge(question: str, retrieved_chunks: list, judge_model_name: str) -
             "question": question,
             "context": context,
         })
-        print(
+        logging.info(
             "================================ JUIZ EM AÇÃO ================================"
         )
-        print(f"[?] PERGUNTA: {question}")
-        print(f"[i] CONTEXTO FORNECIDO:\n{context}")
-        print(f"[*] RESPOSTA BRUTA DO JUIZ: {response}")
-        print("==============================================================================")
+        logging.info(f"[?] PERGUNTA: {question}")
+        logging.debug(f"[i] CONTEXTO FORNECIDO:\n{context}")
+        logging.info(f"[*] RESPOSTA BRUTA DO JUIZ: {response}")
+        logging.info("==============================================================================")
         is_relevant = "true" in response.lower()
         return {"is_relevant": is_relevant, "raw_response": response}
     except Exception as judge_err:
