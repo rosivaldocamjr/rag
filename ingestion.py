@@ -7,7 +7,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain_core.documents import Document 
+from langchain_core.documents import Document
 
 def create_vector_store(docs: list, strategy: dict, index_path: str):
     """
@@ -15,11 +15,20 @@ def create_vector_store(docs: list, strategy: dict, index_path: str):
     e cria um banco de vetores FAISS.
     """
     chunk_method = strategy.get("chunk_method", "recursive")
-    embedding_model_name = strategy['embedding_model']
+    embedding_model_name = strategy["embedding_model"]
 
-    logging.info(f"\n--- Criando Vector Store com a estratégia: chunk_method={chunk_method}, model='{embedding_model_name}' ---")
+    logging.info(
+        f"\n--- Criando Vector Store com a estratégia: chunk_method={chunk_method}, model='{embedding_model_name}' ---"
+    )
 
-    # Carrega o modelo de embedding
+    # Resolve o modelo de embedding, usando fallback se necessário
+    if not os.path.exists(embedding_model_name):
+        fallback_model = config["retriever_models"]["default_embedding_fallback"]
+        logging.warning(
+            f"Modelo de embeddings '{embedding_model_name}' não encontrado. Usando fallback '{fallback_model}'."
+        )
+        embedding_model_name = fallback_model
+
     embedding_model = SentenceTransformerEmbeddings(model_name=embedding_model_name)
 
     # Escolhe o método de chunking com base na estratégia
