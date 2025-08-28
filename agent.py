@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 import yaml
 from retriever_factory import create_advanced_retriever
 
+# Configure logging as soon as the module is imported
+setup_logging()
+
 load_dotenv()
 
 with open('config.yaml', 'r', encoding='utf-8') as f:
@@ -119,8 +122,6 @@ def create_rag_agent():
 
 if __name__ == '__main__':
 
-    setup_logging()
-    
     rag_agent = create_rag_agent()
     logging.info("Agente RAG iniciado. Faça suas perguntas. Pressione Ctrl+C para sair.")
 
