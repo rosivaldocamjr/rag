@@ -1,7 +1,5 @@
 import logging
 from logger_config import setup_logging
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain.agents import tool, AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -35,52 +33,48 @@ BEST_INDEX_PATH = config['vector_store_path_template'].format(
 )
 BEST_EMBEDDING_MODEL = chosen_strategy['embedding_model']
 
-try:
-    retriever = create_advanced_retriever(
-        vector_store_path=BEST_INDEX_PATH,
-        embedding_model_name=BEST_EMBEDDING_MODEL,
-        k_value=config['agent']['retriever_k'],
-        retriever_config=config['retriever_models'],
-    )
-except Exception as retr_err:  
-    logging.error(
-        "Falha ao criar o retriever para o agente: %s", retr_err
-    )
-    retriever = None
 
-@tool
-def search_in_documents(search_query: str) -> str: 
-    """
-    Realiza uma busca semântica no OWASP Application Security Verification Standard v5.0.0 para encontrar 
-    requisitos e orientações sobre segurança de aplicações e serviços web. A entrada deve ser uma pergunta 
-    clara ou palavras-chave. Este é o recurso principal para obter o contexto necessário para responder a 
-    dúvidas relacionadas a práticas, controles e verificações de segurança em software, cobrindo desde 
-    requisitos básicos até mecanismos avançados, organizados em níveis e capítulos.
-    """
+def search_in_documents(retriever):
+    @tool("search_in_documents")
+    def _search_in_documents(search_query: str) -> str:
+        """
+        Realiza uma busca semântica no OWASP Application Security Verification Standard v5.0.0 para
+        encontrar requisitos e orientações sobre segurança de aplicações e serviços web. A entrada deve ser
+        uma pergunta clara ou palavras-chave. Este é o recurso principal para obter o contexto necessário
+        para responder a dúvidas relacionadas a práticas, controles e verificações de segurança em software,
+        cobrindo desde requisitos básicos até mecanismos avançados, organizados em níveis e capítulos.
+        """
 
-    logging.info(f"--- Agente chamou a ferramenta com query: '{search_query}' ---") # 
-
-    if retriever is None:
-        return (
-            "O mecanismo de busca não está disponível. Verifique se o índice de vetores foi gerado "
-            "(execute o script de ingestão) ou se há dependências ausentes."
+        logging.info(
+            f"--- Agente chamou a ferramenta com query: '{search_query}' ---"
         )
 
-    docs = retriever.invoke(search_query)
-    if not docs:
-        return "Nenhuma informação relevante foi encontrada nos documentos para esta consulta."
+        if retriever is None:
+            return (
+                "O mecanismo de busca não está disponível. Verifique se o índice de vetores foi gerado "
+                "(execute o script de ingestão) ou se há dependências ausentes."
+            )
 
-    context = "\n\n---\n\n".join(
-        [
-            f"Fonte: {doc.metadata.get('source', 'N/A')}, Página: {doc.metadata.get('page', 'N/A')}\nConteúdo: {doc.page_content}"
-            for doc in docs
-        ]
-    )
-    return context
+        docs = retriever.invoke(search_query)
+        if not docs:
+            return (
+                "Nenhuma informação relevante foi encontrada nos documentos para esta consulta."
+            )
 
-def create_rag_agent():
-    
-    tools = [search_in_documents]
+        context = "\n\n---\n\n".join(
+            [
+                f"Fonte: {doc.metadata.get('source', 'N/A')}, Página: {doc.metadata.get('page', 'N/A')}\nConteúdo: {doc.page_content}"
+                for doc in docs
+            ]
+        )
+        return context
+
+    return _search_in_documents
+
+
+def create_rag_agent(retriever):
+
+    tools = [search_in_documents(retriever)]
     
     SYSTEM_PROMPT = """
     Você é um assistente especialista em análise de segurança de aplicações web chamado AnalistaIA. 
@@ -122,13 +116,26 @@ def create_rag_agent():
 if __name__ == '__main__':
 
     setup_logging()
-    
-    rag_agent = create_rag_agent()
+
+    try:
+        retriever = create_advanced_retriever(
+            vector_store_path=BEST_INDEX_PATH,
+            embedding_model_name=BEST_EMBEDDING_MODEL,
+            k_value=config['agent']['retriever_k'],
+            retriever_config=config['retriever_models'],
+        )
+    except Exception as retr_err:
+        logging.error(
+            "Falha ao criar o retriever para o agente: %s", retr_err
+        )
+        retriever = None
+
+    rag_agent = create_rag_agent(retriever)
     logging.info("Agente RAG iniciado. Faça suas perguntas. Pressione Ctrl+C para sair.")
 
     try:
         while True:
-            
+
             question = input("\nSua Pergunta: ")
 
             response = rag_agent.invoke({"input": question})
@@ -136,5 +143,5 @@ if __name__ == '__main__':
             logging.info("\n--- Resposta do Agente ---")
             logging.info(response["output"])
     except KeyboardInterrupt:
-        
+
         logging.info("\n\nEncerrando o agente. Até logo!")
