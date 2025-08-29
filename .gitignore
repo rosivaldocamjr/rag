@@ -1,22 +1,20 @@
-# Ambiente virtual
+# Ignore arquivos de ambiente virtual
 venv/
 .venv/
 
-# Cache do Python
+# Ignore arquivos compilados e caches
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Arquivos de ambiente (segredos)
+# Ignore arquivos de configuração do sistema e IDEs
 .env
 .env.*
 
-# Dados locais e modelos
-local_models/
+# Ignore arquivos de logs e temporários
 vector_stores/
+local_models/
 
-# Arquivos de saída / temporários
-
-# VS Code configs
+# Ignore arquivos de configuração do editor
 .vscode/

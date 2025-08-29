@@ -5,7 +5,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever, ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import CrossEncoderReranker
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 try:
     from langchain_community.cross_encoders import HuggingFaceCrossEncoder
@@ -61,7 +61,7 @@ def create_advanced_retriever(
         resolved_embedding_name = fallback_model
 
     try:
-        embedding_model = SentenceTransformerEmbeddings(model_name=resolved_embedding_name)
+        embedding_model = HuggingFaceEmbeddings(model_name=resolved_embedding_name)
     except Exception as embed_err:
         logging.error(
             "Falha ao carregar o modelo de embeddings '%s': %s. Usando fallback '%s'.",
@@ -69,7 +69,7 @@ def create_advanced_retriever(
             embed_err,
             fallback_model,
         )
-        embedding_model = SentenceTransformerEmbeddings(model_name=fallback_model)
+        embedding_model = HuggingFaceEmbeddings(model_name=fallback_model)
 
     # --- 2. Carrega o índice FAISS ---
     if not os.path.exists(vector_store_path):

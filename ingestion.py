@@ -4,7 +4,7 @@ import yaml
 import logging
 from logger_config import setup_logging
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.documents import Document 
@@ -20,7 +20,7 @@ def create_vector_store(docs: list, strategy: dict, index_path: str):
     logging.info(f"\n--- Criando Vector Store com a estratégia: chunk_method={chunk_method}, model='{embedding_model_name}' ---")
 
     # Carrega o modelo de embedding
-    embedding_model = SentenceTransformerEmbeddings(model_name=embedding_model_name)
+    embedding_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
 
     # Escolhe o método de chunking com base na estratégia
     if chunk_method == "semantic":

@@ -42,7 +42,7 @@ evaluator:
 
 # Configurações do Agente Final
 agent:
-  strategy_to_use: 7 # Fixando a estratégia 2, que foi a vencedora nos seus testes.
+  strategy_to_use: 7 # Fixando a estratégia 7, que foi a vencedora nos seus testes.
   agent_llm: "gpt-4o-mini" # Modelo de alta qualidade para a resposta final
   retriever_k: 5
 

@@ -1,7 +1,5 @@
 import logging
 from logger_config import setup_logging
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain.agents import tool, AgentExecutor, create_openai_tools_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
