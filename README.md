@@ -20,24 +20,24 @@ Este projeto implementa um sistema avançado de RAG (Retrieval-Augmented Generat
 ---
 
 ### Arquitetura do Projeto
-/
-├── data/                     # Pasta para colocar os documentos PDF de entrada
-├── local_models/             # (Opcional) Pasta para modelos de embedding locais
-├── agent.py                  # Script para iniciar e interagir com o agente RAG
-├── evaluate_retrieval.py     # Script para rodar a avaliação de performance do retriever
-├── ingestion.py              # Script para processar PDFs e carregar os dados no Milvus
-├── logger_config.py          # Configuração centralizada de logs do projeto
-├── parse_docs_to_json.py     # Script auxiliar para extrair texto dos PDFs
-├── retriever_factory.py      # Módulo central que constrói o retriever avançado
-├── config.yaml               # Arquivo de configuração central para todo o projeto
-├── evaluation_results.csv    # Resultados das avaliações do retriever
-├── parsed_data.json          # Dados já processados e normalizados
-├── test_set.csv              # Dataset de teste para avaliação do sistema
-├── requirements.in           # Lista mínima de dependências (antes do pip-compile)
-├── requirements.txt          # Dependências completas e compiladas do projeto
-├── README.md                 # Documentação inicial do projeto
-├── LICENSE                   # Licença do projeto
-├── .env                      # Arquivo para variáveis de ambiente (chaves de API, etc.)
+/<br>
+├── data/                     # Pasta para colocar os documentos PDF de entrada<br>
+├── local_models/             # (Opcional) Pasta para modelos de embedding locais<br>
+├── agent.py                  # Script para iniciar e interagir com o agente RAG<br>
+├── evaluate_retrieval.py     # Script para rodar a avaliação de performance do retriever<br>
+├── ingestion.py              # Script para processar PDFs e carregar os dados no Milvus<br>
+├── logger_config.py          # Configuração centralizada de logs do projeto<br>
+├── parse_docs_to_json.py     # Script auxiliar para extrair texto dos PDFs<br>
+├── retriever_factory.py      # Módulo central que constrói o retriever avançado<br>
+├── config.yaml               # Arquivo de configuração central para todo o projeto<br>
+├── evaluation_results.csv    # Resultados das avaliações do retriever<br>
+├── parsed_data.json          # Dados já processados e normalizados<br>
+├── test_set.csv              # Dataset de teste para avaliação do sistema<br>
+├── requirements.in           # Lista mínima de dependências (antes do pip-compile)<br>
+├── requirements.txt          # Dependências completas e compiladas do projeto<br>
+├── README.md                 # Documentação inicial do projeto<br>
+├── LICENSE                   # Licença do projeto<br>
+├── .env                      # Arquivo para variáveis de ambiente (chaves de API, etc.)<br>
 └── .gitignore                # Arquivo para ignorar arquivos/pastas no Git
 
 
