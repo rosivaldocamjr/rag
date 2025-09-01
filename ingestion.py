@@ -5,19 +5,67 @@ import logging
 from logger_config import setup_logging
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
+# Removido: from langchain_community.vectorstores import FAISS
 from langchain_experimental.text_splitter import SemanticChunker
-from langchain_core.documents import Document 
+from langchain_core.documents import Document
+from pymilvus import connections, Collection, utility, Partition
 
-def create_vector_store(docs: list, strategy: dict, index_path: str):
+with open('config.yaml', 'r', encoding='utf-8') as f:
+    config = yaml.safe_load(f)
+
+from dotenv import load_dotenv
+load_dotenv()
+
+MILVUS_URI = os.getenv("MILVUS_AMB_URI")
+MILVUS_COLLECTION_NAME = os.getenv("MILVUS_COLLECTION_NAME")
+MILVUS_DB_NAME = os.getenv("MILVUS_DB_NAME")
+
+
+def insert_data_into_milvus(collection: Collection, chunks: list, embedding_model, partition_name: str):    
     """
-    Recebe uma lista de documentos (já carregados), aplica uma estratégia de chunking
-    e cria um banco de vetores FAISS.
+    Gera embeddings para os chunks e os insere na coleção do Milvus.
+    """
+    logging.info(f"Iniciando a inserção de {len(chunks)} chunks na partição '{partition_name}'...")
+
+    texts = [chunk.page_content for chunk in chunks]
+    try:
+        embeddings = embedding_model.embed_documents(texts)
+        logging.info("Embeddings gerados com sucesso.")
+    except Exception as e:
+        logging.error(f"Falha ao gerar embeddings: {e}")
+        return
+    
+    entities = []
+    for i, chunk in enumerate(chunks):
+        entity = {
+            "embedding": embeddings[i],
+            "chunk_text": chunk.page_content,
+            "source": chunk.metadata.get("source", "N/A"),
+            "page": int(chunk.metadata.get("page", 0))
+        }
+        entities.append(entity)
+        
+    try:
+        # Insere os dados na coleção
+        collection.insert(entities, partition_name=partition_name)
+        # Realiza o "flush" para garantir que os dados sejam escritos no disco
+        collection.flush()
+        logging.info(f"{len(entities)} chunks inseridos com sucesso na partição '{partition_name}'.")
+
+    except Exception as e:
+        logging.error(f"Erro ao inserir dados no Milvus: {e}")
+
+
+def process_and_store_documents(docs: list, strategy: dict):
+    """
+    Recebe uma lista de documentos, aplica uma estratégia de chunking
+    e armazena o resultado no Milvus.
     """
     chunk_method = strategy.get("chunk_method", "recursive")
     embedding_model_name = strategy['embedding_model']
+    partition_name = strategy['partition_name']
 
-    logging.info(f"\n--- Criando Vector Store com a estratégia: chunk_method={chunk_method}, model='{embedding_model_name}' ---")
+    logging.info(f"\n--- Processando com: chunk_method={chunk_method}, model='{embedding_model_name}', partition='{partition_name}' ---")
 
     # Carrega o modelo de embedding
     embedding_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
@@ -36,56 +84,55 @@ def create_vector_store(docs: list, strategy: dict, index_path: str):
     chunks = text_splitter.split_documents(docs)
     logging.info(f"Total de chunks gerados: {len(chunks)}")
 
-    logging.info("Gerando embeddings e criando o banco de vetores...")
-    vector_store = FAISS.from_documents(chunks, embedding_model)
-    logging.info("Banco de vetores criado com sucesso.")
+    try:
+        connections.connect(alias="default", uri=MILVUS_URI, db_name=MILVUS_DB_NAME)
+        logging.info(f"Conexão com Milvus estabelecida em '{MILVUS_URI}' no DB '{MILVUS_DB_NAME}'.")
 
-    # Certifique-se de que o diretório de destino exista antes de salvar
-    os.makedirs(index_path, exist_ok=True)
-    vector_store.save_local(index_path)
-    logging.info(f"Índice salvo em: {index_path}")
+        if not utility.has_collection(MILVUS_COLLECTION_NAME):
+            logging.error(f"A coleção '{MILVUS_COLLECTION_NAME}' não foi encontrada no Milvus. Crie-a primeiro.")
+            return
+
+        collection = Collection(name=MILVUS_COLLECTION_NAME)
+        
+        if collection.has_partition(partition_name):
+            logging.warning(f"Partição '{partition_name}' já existe. Removendo dados antigos...")
+            collection.drop_partition(partition_name)
+       
+        logging.info(f"Criando nova partição: '{partition_name}'")
+        collection.create_partition(partition_name)
+
+        collection.load()
+
+        insert_data_into_milvus(collection, chunks, embedding_model, partition_name)
+        
+    except Exception as e:
+        logging.error(f"Ocorreu um erro durante a operação com o Milvus: {e}")
+    finally:
+        connections.disconnect(alias="default")
+        logging.info("Conexão com Milvus encerrada.")
 
 
 if __name__ == '__main__':
     setup_logging()
-
-    # Carrega as configurações do projeto
-    with open('config.yaml', 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-        
-    # 1. Define o caminho para o arquivo JSON pré-processado
+    
     JSON_PATH = "parsed_data.json"
     
-    # Verifica se o arquivo JSON existe antes de continuar
     if not os.path.exists(JSON_PATH):
-        logging.error(f"Arquivo '{JSON_PATH}' não encontrado. Execute o script 'parse_docs_to_json.py' primeiro.")
-        exit() # Encerra o script se o arquivo não existir
+        logging.error(f"Arquivo '{JSON_PATH}' não encontrado. Execute 'parse_docs_to_json.py' primeiro.")
+        exit()
 
-    # 2. Carrega os dados extraídos do arquivo JSON
-    logging.info(f"Carregando documentos pré-processados de '{JSON_PATH}'...")
+    logging.info(f"Carregando documentos de '{JSON_PATH}'...")
     with open(JSON_PATH, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    # 3. Converte os dados do JSON de volta para objetos Document do LangChain
-    # Isso é necessário para que as funções do LangChain (como o text_splitter) funcionem corretamente.
     documents = [Document(page_content=item['page_content'], metadata=item['metadata']) for item in data]
-    logging.info(f"Total de {len(documents)} documentos carregados do JSON.")
+    logging.info(f"Total de {len(documents)} documentos carregados.")
 
-    # 4. Itera sobre as estratégias para criar os vector stores
     for strategy in config['ingestion_strategies']:
         strategy_id = strategy['id']
-        index_path = config['vector_store_path_template'].format(id=strategy_id)
-
         logging.info(f"\n{'='*20} PROCESSANDO ESTRATÉGIA {strategy_id} {'='*20}")
 
-        # Opcional: Verifica se o índice já existe para não reprocessar
-        if os.path.exists(index_path):
-            logging.info(f"Índice para a estratégia {strategy_id} já existe em '{index_path}'. Pulando.")
-            continue
-
-        # Chama a função de criação do vector store com os documentos carregados
-        create_vector_store(
+        process_and_store_documents(
             docs=documents,
-            strategy=strategy,
-            index_path=index_path
+            strategy=strategy
         )

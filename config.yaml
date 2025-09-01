@@ -1,7 +1,6 @@
 # Caminhos dos arquivos
 data_path: "data/"
 test_set_path: "test_set.csv"
-vector_store_path_template: "vector_stores/faiss_index_strategy_{id}"
 results_path: "evaluation_results.csv"
 
 # Estratégias de Ingestão para testar
@@ -29,7 +28,8 @@ ingestion_strategies:
   #- id: 6
   #  chunk_method: "semantic"  # Identificador para o novo método
   #  embedding_model: "local_models/bge-large-en-v1.5"
-  - id: 7 # <-- NOVA ESTRATÉGIA ROBUSTA
+  - id: 7
+    partition_name: "strategy_7" 
     chunk_method: "recursive"
     chunk_size: 1000
     chunk_overlap: 200
@@ -42,8 +42,9 @@ evaluator:
 
 # Configurações do Agente Final
 agent:
-  strategy_to_use: 7 # Fixando a estratégia 7, que foi a vencedora nos seus testes.
-  agent_llm: "gpt-4o-mini" # Modelo de alta qualidade para a resposta final
+  strategy_to_use: 7 
+  partition_to_use: "strategy_7"
+  agent_llm: "gpt-4o-mini" 
   retriever_k: 5
 
 # Modelos e Parâmetros do Retriever

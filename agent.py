@@ -28,14 +28,12 @@ logging.info(
     f"Agente será executado com a Estratégia {chosen_strategy['id']}"
 )
 
-BEST_INDEX_PATH = config['vector_store_path_template'].format(
-    id=chosen_strategy['id']
-)
 BEST_EMBEDDING_MODEL = chosen_strategy['embedding_model']
+PARTITION_TO_USE = chosen_strategy['partition_name']
 
 try:
     retriever = create_advanced_retriever(
-        vector_store_path=BEST_INDEX_PATH,
+        partition_name=PARTITION_TO_USE,
         embedding_model_name=BEST_EMBEDDING_MODEL,
         k_value=config['agent']['retriever_k'],
         retriever_config=config['retriever_models'],

@@ -25,7 +25,7 @@ def llm_as_judge(question: str, retrieved_chunks: list, judge_model_name: str) -
     """
     Usa um LLM para julgar se o contexto recuperado é suficiente para responder à pergunta.
     """
-    # Concatena o conteúdo dos chunks
+    # Esta função permanece inalterada
     context = "\n---\n".join([chunk.page_content for chunk in retrieved_chunks])
     
     prompt_template = """
@@ -51,7 +51,6 @@ def llm_as_judge(question: str, retrieved_chunks: list, judge_model_name: str) -
     
     prompt = PromptTemplate.from_template(prompt_template)
     try:
-        #                                       ⇩⇩⇩ USE O PARÂMETRO AQUI ⇩⇩⇩
         llm = ChatOpenAI(model=judge_model_name, temperature=0)
         chain = prompt | llm | StrOutputParser()
         response = chain.invoke({
@@ -85,15 +84,17 @@ def llm_as_judge(question: str, retrieved_chunks: list, judge_model_name: str) -
         }
 
 
-def evaluate_retrieval_strategy(test_set_path: str, index_path: str, embedding_model_name: str, retriever_k: int, judge_model_name: str, retriever_config: dict):
+# AJUSTE 1: Removido o parâmetro 'index_path' da assinatura da função
+def evaluate_retrieval_strategy(test_set_path: str, embedding_model_name: str, retriever_k: int, judge_model_name: str, retriever_config: dict, partition_name: str):
     """
     Avalia uma estratégia de recuperação de dados usando um conjunto de testes e um juiz LLM.
     """
-    logging.info(f"\n--- Avaliando a Estratégia ... com o Índice: {index_path} ---")
+    logging.info(f"\n--- Avaliando a Estratégia com o embedding: {embedding_model_name} em partição: {partition_name} ---")
     test_df = pd.read_csv(test_set_path)
     
+    # AJUSTE 2: Removido o argumento 'vector_store_path' da chamada da função
     advanced_retriever = create_advanced_retriever(
-        vector_store_path=index_path,
+        partition_name=partition_name,
         embedding_model_name=embedding_model_name,
         k_value=retriever_k,
         retriever_config=retriever_config
@@ -113,8 +114,6 @@ def evaluate_retrieval_strategy(test_set_path: str, index_path: str, embedding_m
             )
             top_passages = []
 
-        # Usa o juiz para avaliar o contexto de alta qualidade
-        #                                                         ⇩⇩⇩ PASSE O PARÂMETRO AQUI ⇩⇩⇩
         judgement = llm_as_judge(question, top_passages, judge_model_name)
         
         if judgement["is_relevant"]:
@@ -128,7 +127,7 @@ def evaluate_retrieval_strategy(test_set_path: str, index_path: str, embedding_m
     else:
         accuracy = 0
         
-    logging.info(f"--- Resultado Final para '{index_path}' (Busca Híbrida + Re-ranker) ---")
+    logging.info(f"--- Resultado Final para '{embedding_model_name}' (Busca Híbrida + Re-ranker) ---")
     logging.info(f"Taxa de Acerto da Recuperação: {accuracy:.2f}% ({correct_hits}/{len(test_df)})")
     return accuracy
 
@@ -142,16 +141,17 @@ if __name__ == '__main__':
     all_results = []
     for strategy in config['ingestion_strategies']:
         strategy_id = strategy['id']
-        index_path = config['vector_store_path_template'].format(id=strategy_id)
+        partition_name = strategy['partition_name']
 
         try:
+            # AJUSTE 4: O argumento 'index_path' foi removido da chamada da função
             accuracy = evaluate_retrieval_strategy(
                 test_set_path=config['test_set_path'],
-                index_path=index_path,
                 embedding_model_name=strategy['embedding_model'],
                 retriever_k=config['evaluator']['retriever_k'],
                 judge_model_name=config['evaluator']['llm_judge'],
-                retriever_config=config['retriever_models']
+                retriever_config=config['retriever_models'],
+                partition_name=partition_name
             )
         except Exception as eval_err:
             logging.error(
@@ -171,3 +171,4 @@ if __name__ == '__main__':
     results_df = pd.DataFrame(all_results)
     results_path = config['results_path']
     results_df.to_csv(results_path, index=False)
+    logging.info(f"Resultados da avaliação salvos em: {results_path}")

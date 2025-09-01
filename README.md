@@ -1,127 +1,170 @@
-# RAG
-Assistente RAG especialista no OWASP ASVS. Desenvolvido com Python e LangChain, usa busca híbrida e re-ranking para respostas precisas sobre segurança de aplicações, baseando-se nos documentos. Inclui um sistema de avaliação para otimizar a recuperação da informação.
+# RAG com Busca Híbrida, Re-ranking e LLM-as-Judge
+
+Este projeto implementa um sistema avançado de RAG (Retrieval-Augmented Generation) projetado para responder perguntas com base em uma coleção de documentos privados em formato PDF. Ele utiliza técnicas sofisticadas para garantir que as respostas sejam precisas e relevantes, buscando o contexto em um banco de dados vetorial Milvus.
 
 ---
 
-### ✨ Principais Características
-- Fluxo RAG Completo: Scripts para pré-processamento de PDFs, ingestão de dados, avaliação de estratégias e execução do agente interativo.
-- Recuperação Avançada: Utiliza busca híbrida (BM25 + FAISS) e um re-ranker Cross-Encoder para garantir a máxima relevância dos resultados.
-- Módulo de Avaliação: Inclui um sistema "LLM-as-a-Judge" para testar e validar a eficácia de diferentes estratégias de chunking e embedding.
-- Agente Inteligente: O agente final é construído com Chain of Thought para raciocinar sobre as perguntas e fornecer respostas precisas, citando as fontes e evidências do documento original.
-- Configurável e Modular: Toda a lógica é controlada através de um arquivo config.yaml, facilitando a experimentação e a manutenção.
+### Core Features
+- Busca Híbrida: Combina a busca por palavras-chave (BM25) com a busca por similaridade semântica (vetores de embedding), garantindo a captura tanto de termos exatos quanto do significado contextual.
+
+- Re-ranking de Resultados: Utiliza um modelo Cross-Encoder para reordenar os resultados da busca híbrida, trazendo os trechos mais relevantes para o topo antes de enviá-los ao LLM.
+
+- Banco de Dados Vetorial Milvus: Armazena os vetores de embeddings para buscas semânticas rápidas e escaláveis, com suporte a partições para isolar diferentes estratégias de ingestão.
+
+- Agente Inteligente (LangChain): Um agente conversacional que utiliza as ferramentas de busca para raciocinar sobre a pergunta do usuário e formular respostas detalhadas com base nas fontes encontradas.
+
+- Pipeline de Avaliação: Inclui um módulo para avaliar objetivamente a qualidade do sistema de recuperação de informações usando um LLM como "juiz" (LLM-as-a-Judge), gerando uma métrica de acurácia.
+
+- Estratégias de Ingestão Configuráveis: Permite testar diferentes métodos de "chunking" (divisão de texto) e modelos de embedding através de um único arquivo de configuração (config.yaml).
 
 ---
 
-### ⚙️ Como Funciona
-O projeto segue um fluxo de trabalho de RAG clássico, dividido em etapas claras:
+### Arquitetura do Projeto
+/
+├── data/                     # Pasta para colocar os documentos PDF de entrada
+├── local_models/             # (Opcional) Pasta para modelos de embedding locais
+├── agent.py                  # Script para iniciar e interagir com o agente RAG
+├── evaluate_retrieval.py     # Script para rodar a avaliação de performance do retriever
+├── ingestion.py              # Script para processar PDFs e carregar os dados no Milvus
+├── logger_config.py          # Configuração centralizada de logs do projeto
+├── parse_docs_to_json.py     # Script auxiliar para extrair texto dos PDFs
+├── retriever_factory.py      # Módulo central que constrói o retriever avançado
+├── config.yaml               # Arquivo de configuração central para todo o projeto
+├── evaluation_results.csv    # Resultados das avaliações do retriever
+├── parsed_data.json          # Dados já processados e normalizados
+├── test_set.csv              # Dataset de teste para avaliação do sistema
+├── requirements.in           # Lista mínima de dependências (antes do pip-compile)
+├── requirements.txt          # Dependências completas e compiladas do projeto
+├── README.md                 # Documentação inicial do projeto
+├── LICENSE                   # Licença do projeto
+├── .env                      # Arquivo para variáveis de ambiente (chaves de API, etc.)
+└── .gitignore                # Arquivo para ignorar arquivos/pastas no Git
 
-- Extração: Os documentos PDF são lidos e seu conteúdo textual é extraído e limpo, gerando um arquivo JSON estruturado.
-- Ingestão: O texto é dividido em pedaços (chunks) e vetorizado usando modelos de embedding. Esses vetores são armazenados em um banco de dados vetorial (FAISS) para busca semântica rápida.
-- Recuperação: Quando um usuário faz uma pergunta, o sistema realiza uma busca híbrida (semântica + palavras-chave) para encontrar os chunks mais relevantes nos documentos.
-- Geração: Os chunks recuperados são injetados em um prompt, junto com a pergunta do usuário, e enviados a um LLM (como o GPT-4o-mini) para gerar uma resposta coesa e contextualizada.
 
 ---
 
-### 📋 Requisitos
-Antes de começar, garanta que você tenha:
-- Python 3.9 ou superior.
-- Uma chave de API da OpenAI.
-- Os documentos PDF que servirão como base de conhecimento do agente.
+### Pré-requisitos
+Antes de começar, garanta que você tenha os seguintes softwares instalados:
+
+- Python 3.11 ou superior
+
+- Docker e Docker Compose
+
+- Uma chave de API da OpenAI
 
 ---
 
-### 🚀 Instalação e Configuração
-Siga estes passos para configurar o ambiente e preparar o projeto para execução.
+### Configuração do Ambiente
 
-1. Clonar o Repositório
+Iniciar o Banco de Dados Vetorial (Milvus)
 
-```bash
-git clone https://github.com/seu-usuario/seu-repositorio.git
+A maneira mais fácil de rodar o Milvus é via Docker. No terminal, na raiz do projeto, execute os seguintes comandos:
+
+```Bash
+# Baixar o arquivo de configuração do Milvus
+wget https://milvus.io/docs/v2.4.x/assets/milvus/milvus-standalone-docker-compose.yml -O docker-compose.yml
+
+# Iniciar os contêineres do Milvus em segundo plano
+docker-compose up -d
 ```
-```bash
-cd seu-repositorio
+
+Isso irá iniciar uma instância do Milvus pronta para uso em http://localhost:19530.
+
+Configurar Variáveis de Ambiente
+
+Crie um arquivo chamado .env na raiz do projeto e preencha-o com suas informações.
+
+```Bash
+# .env
+
+# 1. Sua chave de API da OpenAI
+# IMPORTANTE: Substitua pelo seu valor real
+OPENAI_API_KEY="sk-..."
+
+# 2. Configurações de conexão do Milvus
+# Estes são os valores padrão para a instalação via Docker
+MILVUS_AMB_URI="http://localhost:19530"
+MILVUS_DB_NAME="default"
+MILVUS_COLLECTION_NAME="owasp_asvs_v5"
 ```
+Atenção: Mantenha seu arquivo .env seguro e nunca o compartilhe.
 
-2. Criar e Ativar o Ambiente Virtual
-- Windows:
+Criar Ambiente Virtual e Instalar Dependências
 
-```bash
+É altamente recomendado usar um ambiente virtual para isolar as bibliotecas do projeto.
+
+```Bash
+# Criar o ambiente virtual
 python -m venv venv
+
+# Ativar o ambiente (Windows)
 .\venv\Scripts\activate
-```
 
-- macOS / Linux:
-
-```bash
-python3 -m venv venv
+# Ativar o ambiente (macOS/Linux)
 source venv/bin/activate
-```
 
-3. Instalar as Dependências
-Com o ambiente virtual ativado, instale todas as bibliotecas necessárias:
-
-```bash
+# Instalar todas as dependências
 pip install -r requirements.txt
 ```
 
-4. Configurar a Chave de API
-Crie um arquivo chamado .env na raiz do projeto e adicione sua chave da OpenAI:
-
-```bash
-OPENAI_API_KEY="sk-sua-chave-secreta-aqui"
-```
-
-5. Adicionar os Documentos
-Coloque os seus arquivos PDF (por exemplo, o documento OWASP ASVS) dentro do diretório data/.
-
 ---
 
-### ▶️ Execução
-O projeto é executado em etapas. Siga a ordem abaixo.
+### Como Usar o Projeto
+Com o ambiente configurado, siga esta sequência para processar seus dados e interagir com o agente.
 
-Passo 1: Pré-processar os Documentos
+Preparar os Documentos
 
-Este script lê os PDFs da pasta data/, extrai o texto e cria o arquivo parsed_data.json.
+- Crie uma pasta chamada data na raiz do projeto (se ela não existir).
 
-```bash
+- Coloque todos os documentos PDF que você deseja que o RAG utilize dentro desta pasta.
+
+Executar o Parsing e a Ingestão
+
+Estes dois comandos irão ler seus PDFs, processá-los e carregá-los no Milvus. Execute-os em ordem.
+
+```Bash
+# 1. Extrai o texto dos PDFs e cria o arquivo parsed_data.json
 python parse_docs_to_json.py
-```
 
-Passo 2: Ingerir os Dados (Criar Índices Vetoriais)
-
-Este script processa o parsed_data.json e cria os bancos de dados vetoriais na pasta vector_stores/, um para cada estratégia definida em config.yaml.
-
-```bash
+# 2. Processa o JSON, cria os embeddings e armazena no Milvus
 python ingestion.py
 ```
 
-Passo 3 (Opcional): Avaliar as Estratégias de Recuperação
+Este processo pode levar alguns minutos, dependendo do volume de documentos e do modelo de embedding utilizado.
 
-Para determinar qual estratégia de ingestão oferece os melhores resultados, execute o script de avaliação. Ele usará o test_set.csv para pontuar cada estratégia e salvará os resultados em evaluation_results.csv.
+(Opcional) Avaliar a Qualidade da Busca
 
-```bash
+Se você quiser medir a performance da estratégia de recuperação de dados, execute o script de avaliação. Ele usará o test_set.csv para fazer perguntas e um LLM para julgar a relevância dos resultados.
+
+```Bash
 python evaluate_retrieval.py
 ```
 
-Após a execução, analise o .csv para decidir qual ID de estratégia usar no passo seguinte.
+O resultado será exibido no terminal e salvo no arquivo evaluation_results.csv.
 
-Passo 4: Executar o Agente Conversacional
+Interagir com o Agente RAG
 
-Finalmente, para interagir com o AnalistaIA:
+Este é o passo final, onde você conversa com o assistente.
 
-Edite o config.yaml: Abra o arquivo e, na seção agent, defina o valor de strategy_to_use para o ID da estratégia que você deseja usar (por exemplo, a que teve melhor pontuação na avaliação).
-
-```bash
-agent:
-  strategy_to_use: 7 # <-- Altere este valor para o ID da melhor estratégia
-  agent_llm: "gpt-4o-mini"
-  retriever_k: 5
-```
-
-Inicie o agente:
-
-```bash
+```Bash
 python agent.py
 ```
 
-Converse com o agente: O terminal exibirá o prompt Sua Pergunta:. Faça suas perguntas e pressione Enter. Para encerrar, pressione Ctrl+C.
+O terminal exibirá a mensagem Agente RAG iniciado. Faça suas perguntas. Pressione Ctrl+C para sair.. Digite sua pergunta e pressione Enter. O agente irá raciocinar, buscar nos documentos e fornecer uma resposta completa com as fontes utilizadas.
+
+Exemplo de pergunta:
+Sua Pergunta: Quais são os três níveis de verificação de segurança definidos pelo ASVS?
+
+Para encerrar o agente, pressione ```Ctrl+C```.
+
+Configuração Avançada (config.yaml)
+
+O arquivo config.yaml permite customizar o comportamento do projeto sem alterar o código:
+
+- ingestion_strategies: Defina diferentes estratégias de processamento de dados. Você pode variar o chunk_method (recursive ou semantic), o chunk_size, e o embedding_model. O partition_name isola os dados de cada estratégia no Milvus.
+
+- evaluator: Configure o modelo LLM usado como juiz (llm_judge) e quantos documentos (retriever_k) ele deve avaliar.
+
+- agent: Escolha qual strategy_to_use o agente principal deve utilizar, qual o seu modelo de LLM (agent_llm) e quantos documentos ele deve recuperar (retriever_k).
+
+- retriever_models: Especifique os modelos de embedding e de re-ranking a serem utilizados pelo retriever_factory.

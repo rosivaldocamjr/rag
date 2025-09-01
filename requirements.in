@@ -10,3 +10,5 @@ pymupdf
 python-dotenv
 rank-bm25
 langchain-experimental
+pymilvus
+langchain-milvus
